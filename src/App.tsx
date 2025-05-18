@@ -1,4 +1,10 @@
-import { type FormEvent, useState, useRef } from "react";
+import {
+  type FormEvent,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import { useStore } from "./useStore";
 
 interface FormState {
@@ -23,9 +29,17 @@ export const App = () => {
     confirmPassword: "",
   });
 
+  const [touched, setTouched] = useState<{ [key in keyof FormState]: boolean }>(
+    {
+      email: false,
+      password: false,
+      confirmPassword: false,
+    }
+  );
+
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const validateFields = () => {
+  const validateFields = useCallback(() => {
     const newErrors: { [key in keyof FormState]: string } = {
       email: "",
       password: "",
@@ -55,35 +69,40 @@ export const App = () => {
 
     setErrors(newErrors);
     return newErrors;
-  };
+  }, [confirmPassword, email, password]);
 
-  const handleBlur = () => {
-    if (email && password && confirmPassword) {
-      const errs = validateFields();
-
-      if (!errs.email && !errs.password && !errs.confirmPassword) {
-        buttonRef.current?.focus();
-      }
-    }
+  const handleBlur = (field: keyof FormState) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    validateFields();
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const errs = validateFields();
 
+    const errs = validateFields();
     if (errs.email || errs.password || errs.confirmPassword) {
       return;
     }
     console.log(getState());
   };
 
+  useEffect(() => {
+    validateFields();
+  }, [email, password, confirmPassword, validateFields]);
+
   const isFormValid =
-    !errors.email &&
-    !errors.password &&
-    !errors.confirmPassword &&
     email.trim() !== "" &&
     password.trim() !== "" &&
-    confirmPassword.trim() !== "";
+    confirmPassword.trim() !== "" &&
+    !errors.email &&
+    !errors.password &&
+    !errors.confirmPassword;
+
+  useEffect(() => {
+    if (isFormValid) {
+      buttonRef.current?.focus();
+    }
+  }, [isFormValid]);
 
   return (
     <form
@@ -100,10 +119,10 @@ export const App = () => {
           placeholder="Введите email"
           value={email}
           onChange={(e) => updateState("email", e.target.value)}
-          onBlur={handleBlur}
+          onBlur={() => handleBlur("email")}
           style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
         />
-        {errors.email && (
+        {touched.email && errors.email && (
           <p style={{ color: "red", fontSize: "0.9rem" }}>{errors.email}</p>
         )}
       </div>
@@ -117,10 +136,10 @@ export const App = () => {
           placeholder="Введите пароль"
           value={password}
           onChange={(e) => updateState("password", e.target.value)}
-          onBlur={handleBlur}
+          onBlur={() => handleBlur("password")}
           style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
         />
-        {errors.password && (
+        {touched.password && errors.password && (
           <p style={{ color: "red", fontSize: "0.9rem" }}>{errors.password}</p>
         )}
       </div>
@@ -134,10 +153,10 @@ export const App = () => {
           placeholder="Повторите пароль"
           value={confirmPassword}
           onChange={(e) => updateState("confirmPassword", e.target.value)}
-          onBlur={handleBlur}
+          onBlur={() => handleBlur("confirmPassword")}
           style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
         />
-        {errors.confirmPassword && (
+        {touched.confirmPassword && errors.confirmPassword && (
           <p style={{ color: "red", fontSize: "0.9rem" }}>
             {errors.confirmPassword}
           </p>
